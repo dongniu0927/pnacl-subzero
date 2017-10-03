@@ -809,8 +809,12 @@ private:
                             uint32_t Index, const Operand *OpRt, bool IsExtract,
                             const char *InstName);
 
+  // 111100100D10mmmmdddd0001MQM1mmmm where Ddddd=Dd, and Mmmmm=Dm.
+  // Assigns register Dd the value of register Dm.
+  void emitMoveDD(IValueT Dd, IValueT Dm);
+
   // cccc11101D110000dddd101001M0mmmm where cccc=Cond, ddddD=Sd, and mmmmM=Sm.
-  // Assigns Sd the value of Sm.
+  // Assigns register Sd the value of register Sm.
   void emitMoveSS(CondARM32::Cond Cond, IValueT Sd, IValueT Sm);
 
   // Pattern ccccxxxxxxxfnnnnddddssss1001mmmm where cccc=Cond, dddd=Rd, nnnn=Rn,

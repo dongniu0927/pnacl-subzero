@@ -1114,6 +1114,19 @@ void AssemblerARM32::emitInsertExtractInt(CondARM32::Cond Cond,
   emitInst(Encoding);
 }
 
+void AssemblerARM32::emitMoveDD(IValueT Dd, IValueT Dm) {
+  // VMOV (register) - ARMv7-A/R section A8.6.327, encoding A1:
+  //   VMOV<c> <Dd>, <Dm>
+  //
+  // 111100100D10mmmmdddd0001MQM1mmmm
+  constexpr IValueT VmovOpcode = B25 | B21 | B8 | B4;
+  constexpr bool UseQRegs = false;
+  constexpr bool IsFloatTy = false;
+
+  if (Dd != Dm)
+    emitSIMDBase(VmovOpcode, Dd, Dm, Dm, UseQRegs, IsFloatTy);
+}
+
 void AssemblerARM32::emitMoveSS(CondARM32::Cond Cond, IValueT Sd, IValueT Sm) {
   // VMOV (register) - ARM section A8.8.340, encoding A2:
   //   vmov<c>.f32 <Sd>, <Sm>
@@ -1121,7 +1134,9 @@ void AssemblerARM32::emitMoveSS(CondARM32::Cond Cond, IValueT Sd, IValueT Sm) {
   // cccc11101D110000dddd101001M0mmmm where cccc=Cond, ddddD=Sd, and mmmmM=Sm.
   constexpr IValueT VmovssOpcode = B23 | B21 | B20 | B6;
   constexpr IValueT S0 = 0;
-  emitVFPsss(Cond, VmovssOpcode, Sd, S0, Sm);
+
+  if (Sd != Sm)
+    emitVFPsss(Cond, VmovssOpcode, Sd, S0, Sm);
 }
 
 void AssemblerARM32::emitMulOp(CondARM32::Cond Cond, IValueT Opcode, IValueT Rd,
@@ -3479,20 +3494,14 @@ void AssemblerARM32::vzip(Type ElmtTy, const Operand *OpQd, const Operand *OpQn,
   const IValueT Dn = mapQRegToDReg(encodeQRegister(OpQn, "Qn", Vzip));
   const IValueT Dm = mapQRegToDReg(encodeQRegister(OpQm, "Qm", Vzip));
 
-  constexpr bool UseQRegs = false;
-  constexpr bool IsFloatTy = false;
-
-  // VMOV Dd, Dm
-  // 111100100D10mmmmdddd0001MQM1mmmm
-  constexpr IValueT VmovOpcode = B25 | B21 | B8 | B4;
-
   // Copy lower half of second source to upper half of destination.
-  emitSIMDBase(VmovOpcode, Dd + 1, Dm, Dm, UseQRegs, IsFloatTy);
+  emitMoveDD(Dd + 1, Dm);
 
   // Copy lower half of first source to lower half of destination.
-  if (Dd != Dn)
-    emitSIMDBase(VmovOpcode, Dd, Dn, Dn, UseQRegs, IsFloatTy);
+  emitMoveDD(Dd, Dn);
 
+  constexpr bool UseQRegs = false;
+  constexpr bool IsFloatTy = false;
   constexpr IValueT ElmtShift = 18;
   const IValueT ElmtSize = encodeElmtType(ElmtTy);
   assert(Utils::IsUint(2, ElmtSize));
@@ -3554,15 +3563,8 @@ void AssemblerARM32::vmovlq(const Operand *OpQd, const Operand *OpQn,
   const IValueT Dn = mapQRegToDReg(encodeQRegister(OpQn, "Qn", Vmov));
   const IValueT Dm = mapQRegToDReg(encodeQRegister(OpQm, "Qm", Vmov));
 
-  constexpr bool UseQRegs = false;
-  constexpr bool IsFloat = false;
-
-  const IValueT VmovOpcode = B25 | B21 | B8 | B4;
-
-  if (Dd != Dm)
-    emitSIMDBase(VmovOpcode, Dd, Dm, Dm, UseQRegs, IsFloat);
-  if (Dd + 1 != Dn + 1)
-    emitSIMDBase(VmovOpcode, Dd + 1, Dn + 1, Dn + 1, UseQRegs, IsFloat);
+  emitMoveDD(Dd, Dm);
+  emitMoveDD(Dd + 1, Dn + 1);
 }
 
 void AssemblerARM32::vmovhq(const Operand *OpQd, const Operand *OpQn,
@@ -3580,15 +3582,8 @@ void AssemblerARM32::vmovhq(const Operand *OpQd, const Operand *OpQn,
   const IValueT Dn = mapQRegToDReg(encodeQRegister(OpQn, "Qn", Vmov));
   const IValueT Dm = mapQRegToDReg(encodeQRegister(OpQm, "Qm", Vmov));
 
-  constexpr bool UseQRegs = false;
-  constexpr bool IsFloat = false;
-
-  const IValueT VmovOpcode = B25 | B21 | B8 | B4;
-
-  if (Dd != Dn)
-    emitSIMDBase(VmovOpcode, Dd, Dn, Dn, UseQRegs, IsFloat);
-  if (Dd + 1 != Dm + 1)
-    emitSIMDBase(VmovOpcode, Dd + 1, Dm + 1, Dm + 1, UseQRegs, IsFloat);
+  emitMoveDD(Dd, Dn);
+  emitMoveDD(Dd + 1, Dm + 1);
 }
 
 void AssemblerARM32::vmovhlq(const Operand *OpQd, const Operand *OpQn,
@@ -3606,15 +3601,8 @@ void AssemblerARM32::vmovhlq(const Operand *OpQd, const Operand *OpQn,
   const IValueT Dn = mapQRegToDReg(encodeQRegister(OpQn, "Qn", Vmov));
   const IValueT Dm = mapQRegToDReg(encodeQRegister(OpQm, "Qm", Vmov));
 
-  constexpr bool UseQRegs = false;
-  constexpr bool IsFloat = false;
-
-  const IValueT VmovOpcode = B25 | B21 | B8 | B4;
-
-  if (Dd != Dm + 1)
-    emitSIMDBase(VmovOpcode, Dd, Dm + 1, Dm + 1, UseQRegs, IsFloat);
-  if (Dd + 1 != Dn + 1)
-    emitSIMDBase(VmovOpcode, Dd + 1, Dn + 1, Dn + 1, UseQRegs, IsFloat);
+  emitMoveDD(Dd, Dm + 1);
+  emitMoveDD(Dd + 1, Dn + 1);
 }
 
 void AssemblerARM32::vmovlhq(const Operand *OpQd, const Operand *OpQn,
@@ -3632,15 +3620,8 @@ void AssemblerARM32::vmovlhq(const Operand *OpQd, const Operand *OpQn,
   const IValueT Dn = mapQRegToDReg(encodeQRegister(OpQn, "Qn", Vmov));
   const IValueT Dm = mapQRegToDReg(encodeQRegister(OpQm, "Qm", Vmov));
 
-  constexpr bool UseQRegs = false;
-  constexpr bool IsFloat = false;
-
-  const IValueT VmovOpcode = B25 | B21 | B8 | B4;
-
-  if (Dd + 1 != Dm)
-    emitSIMDBase(VmovOpcode, Dd + 1, Dm, Dm, UseQRegs, IsFloat);
-  if (Dd != Dn)
-    emitSIMDBase(VmovOpcode, Dd, Dn, Dn, UseQRegs, IsFloat);
+  emitMoveDD(Dd + 1, Dm);
+  emitMoveDD(Dd, Dn);
 }
 
 void AssemblerARM32::vnegqs(Type ElmtTy, const Operand *OpQd,
@@ -3938,12 +3919,8 @@ void AssemblerARM32::vqmovn2(Type DestElmtTy, const Operand *OpQd,
   } else {
     // Narrow first source operand to lower half of destination.
     emitSIMDBase(VqmovnOpcode, Dd, 0, Dm, UseQRegs, IsFloatTy);
-
-    // VMOV Dd, Dm
-    // 111100100D10mmmmdddd0001MQM1mmmm
-    const IValueT VmovOpcode = B25 | B21 | B8 | B4;
-
-    emitSIMDBase(VmovOpcode, Dd + 1, Dd, Dd, UseQRegs, IsFloatTy);
+    // Duplicate to upper half.
+    emitMoveDD(Dd + 1, Dd);
   }
 }
 
