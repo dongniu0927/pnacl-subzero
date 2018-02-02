@@ -2,7 +2,7 @@
 ; For example, the encoding is shorter for 8-bit immediates or when using EAX.
 ; This assumes that EAX is chosen as the first free register in O2 mode.
 
-; RUN: %p2i --filetype=obj --disassemble -i %s --args -O2 | FileCheck %s
+; RUN: %p2i --filetype=obj --disassemble -i %s --target=x8632 --args -O2 | FileCheck %s
 
 define internal i32 @testXor8Imm8(i32 %arg) {
 entry:
@@ -258,6 +258,15 @@ entry:
 }
 ; CHECK-LABEL: testMul32Imm32ThreeAddress
 ; CHECK: 69 c8 e8 00 00 00  imul ecx,eax,0xe8
+
+define internal i32 @testMul32Imm32Imm32(i32 %a) {
+entry:
+  %mul = mul i32 6, 1540483477
+  ret i32 %mul
+}
+; CHECK-LABEL: testMul32Imm32Imm32
+; CHECK: b8 06 00 00 00       mov    eax,0x6
+; CHECK: 69 c0 95 e9 d1 5b    imul   eax,eax,0x5bd1e995
 
 define internal i32 @testMul32Mem32Imm32ThreeAddress(i32 %addr_arg) {
 entry:
